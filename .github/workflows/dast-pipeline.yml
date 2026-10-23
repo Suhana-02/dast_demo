@@ -1,0 +1,27 @@
+
+name: DAST Security Scan
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  dast_scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Launch Web Server
+        run: |
+          python3 -m http.server 8000 &
+          sleep 3
+
+      - name: Run OWASP ZAP
+        uses: zaproxy/action-baseline@v0.13.0
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          target: 'http://localhost:8000'
+          fail_action: false
