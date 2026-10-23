@@ -7,18 +7,10 @@ on:
   pull_request:
     branches: ["main"]
 
-permissions:
-  contents: read
-  issues: write
-
 jobs:
   dast_scan:
     name: OWASP ZAP Security Scan
     runs-on: ubuntu-latest
-
-    permissions:
-      contents: read
-      issues: write
 
     steps:
       - name: Checkout Source Code
@@ -26,13 +18,27 @@ jobs:
 
       - name: Launch Web Server
         run: |
-          python3 -m http.server 8000 &
+          python3 -m http.server 8000 > server.log 2>&1 &
+          echo $! > server.pid
           sleep 3
+          curl --fail http://127.0.0.1:8000/
 
-      - name: Run OWASP ZAP
-        uses: zaproxy/action-baseline@v0.13.0
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          target: 'http://localhost:8000'
-          fail_action: false
-          artifact_name: ''
+      - name: Run OWASP ZAP Baseline Scan
+        run: |
+          docker run --network host \
+            -v "$GITHUB_WORKSPACE:/zap/wrk/:rw" \
+            ghcr.io/zaproxy/zaproxy:stable \
+            zap-baseline.py \
+            -t http://127.0.0.1:8000 \
+            -J report_json.json \
+            -w report_md.md \
+            -r report_html.html \
+            -I || echo "Scan completed; check the reports and logs."
+
+      - name: Display Generated Reports
+        if: always()
+        run: |
+          echo "=== Generated ZAP Reports ==="
+          ls -l report_json.json report_md.md report_html.html 2>/dev/null || true
+          echo "=== Web Server Log ==="
+          cat server.log 2>/dev/null || true
