@@ -7,9 +7,19 @@ on:
   pull_request:
     branches: ["main"]
 
+permissions:
+  contents: read
+  issues: write
+
 jobs:
   dast_scan:
+    name: OWASP ZAP Security Scan
     runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      issues: write
+
     steps:
       - name: Checkout Source Code
         uses: actions/checkout@v4
